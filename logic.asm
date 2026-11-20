@@ -2,34 +2,7 @@
 # Game state and rules: the incoming row, the playfield grid, shifting.
 ##############################################################################
 .include "macros.asm"
-
-.eqv GRID_COLS 7            
-.eqv GRID_ROWS 11           
-.eqv NUM_COLOURS 4          
-.eqv BOMB_EMPTY 4           # any index >= NUM_COLOURS means "no bomb"
-
     .data
-num_cycles:
-    .byte 0     # The number of sleep cycles passed since last row advancement
-target_cycles:
-    .byte 255   # The target number of cycles the program waits until it shifts 
-                # the row. target_cycles * 0.016 = time in seconds
-    .align 2
-gwen_offset:    
-    .word 39968          # byte offset from $gp of gwen's top left
-gwen_prev_offset:
-    .word 39968          # previous position for erasing
-gwen_hold:
-    .byte 4, 0             # the colour of the bomb gwen is holding, the number of bombs she is holding
-    .align 2
-# Each cell is one word: a colour index 0..3, or BOMB_EMPTY (4) for no bomb.
-new_bombs:   
-    .space 28           # GRID_COLS * 4 bytes: the incoming bombs
-grid:       
-    .space 308          # GRID_COLS * GRID_ROWS * 4 bytes, row-major
-game_over:  
-    .word 0             # becomes 1 when a shift is impossible
-
     .text
 
 # Resets all game state.
@@ -37,7 +10,7 @@ init_game:
     push($ra)
     
     # fill the grid with BOMB_EMPTY
-    la $t0, grid
+    la $t0, bombs
     addi $t1, $zero, GRID_COLS
     addi $t2, $zero, GRID_ROWS
     mult $t1, $t2
@@ -83,9 +56,9 @@ shift_down:
     addi $t1, $t1, -1
     mult $t0, $t1
     mflo $t2
-    la $t3, grid
+    la $t3, bombs
     
-    # 1. game over if the bottom row already holds a bomb
+    # 1. game over if the row above already holds a bomb
     sll $t4, $t2, 2
     add $t4, $t3, $t4       # first cell of the bottom row
     add $t5, $t0, $zero     # cells left to check
@@ -145,9 +118,9 @@ move_gwen:
     sll $t1, $a0, 4
     add $t2, $t0, $t1
 
-    li $t3, 39948               # left limit
+    li $t3, 40460               # left limit
     blt $t2, $t3, move_gwen_done
-    li $t3, 40140               # right limit
+    li $t3, 40652               # right limit
     bgt $t2, $t3, move_gwen_done
 
     # Save previous position for erasing, then update current position
@@ -160,54 +133,50 @@ move_gwen_done:
     
 gwen_shoot:
     push($ra)
-    lw $t0, gwen_offset
-    # 1. Loop up until hit a bomb
+    #   v0 = index of bomb's colour, -1 if no bomb found
+    #   v1 = bomb offset
+    #   a0 = address of bomb's cell in bomb array
+gwen_shoot_loop:
+    jal find_bomb
+    blt $v0, $zero, end_gwen_shoot 
     
-    # 2. Check what gwen holding, if >= 4 then take the bomb
-    # 3. If not, check what the bomb is, compare to what gwen has
-    # 4. If match, also take the bomb
-    # 5. Taking the bomb
-    take_bomb:
-        # 5.1 Replace current bomb location with a 4
-        # 5.2 Set the colour of gwen holding (# Pre: no illegal bomb colour mixing)
-        # 5.3 Increment how much she's holding
+    la $t2, gwen_hold
+    lbu $t0, 0($t2)
+    beq $t0, BOMB_EMPTY, gwen_bomb_found
+    bne $t0, $v0, end_gwen_shoot
     
+gwen_bomb_found:
+    lbu $t1, 1($t2)
+    addi $t1, $t1, 1
+    sb $t1, 1($t2)
+    sb $v0, 0($t2)
+    
+    addi $t3, $zero, BOMB_EMPTY
+    sw $t3, 0($a0)
+    
+    add $a0, $gp, $v1                  
+    addi $a1, $zero, 7                  
+    addi $a2, $zero, 7              
+    add $a3, $zero, $zero
+    jal rectangle
+    
+    j gwen_shoot_loop
+    
+end_gwen_shoot:
     pop($ra)
     jr $ra
     
-
-# Responds to keyboard keys.
-# a0 = char of key pressed.
-handle_keypress:
+    
+gwen_throw:
     push($ra)
-    beq $a0, 0x71, respond_to_Q
-    beq $a0, 0x61, respond_to_A
-    beq $a0, 0x64, respond_to_D
-    beq $a0, 0x73, respond_to_S
-    beq $a0, 0x77, respond_to_W
-    j keyboard_done
-
-respond_to_Q:
-	li $v0, 10                      # Quit gracefully
-	syscall
-	
-respond_to_A:
-    addi $a0, $zero, -1
-	jal move_gwen
-	j keyboard_done
-
-respond_to_D:
-    addi $a0, $zero, 1
-	jal move_gwen
-	j keyboard_done
-
-respond_to_S:
-    jal gwen_shoot
-	j keyboard_done
-	
-respond_to_W:
-	j keyboard_done
-	
-keyboard_done:
+    
+    # 1) check if she even has a bombs, if not go to end_gwen_throw
+    
+    # 2) now we know she has a bomb... she throws it
+    # 3) reset her holding data
+    # 4) redraw the screen with the x amount of bombs above her
+    # func: gwen_throw_bombs
+    
+end_gwen_throw:
     pop($ra)
     jr $ra

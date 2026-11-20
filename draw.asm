@@ -2,13 +2,6 @@
 # All drawing data (sprites, palettes, rectangle lists) and drawing code.
 ##############################################################################
 .include "macros.asm"
-
-.eqv GRID_COLS 7            
-.eqv GRID_ROWS 11           
-.eqv NUM_COLOURS 4          
-.eqv NEXT_ROW_OFFSET 32     # incoming row, rows 0-6
-.eqv GRID_OFFSET 4128       # playfield top left, row 8
-
     .data
 ##############################################################################
 # Palettes: one word per colour (0x00RRGGBB).
@@ -17,14 +10,13 @@
 # gwen: pink, white, black, dark pink, blue
 gwen_palette:   
     .word 0x00000000, 0x00CD2966, 0x00FFFFFF, 0x00000000, 0x00991C47, 0x000A9693
-# bombs: outline, main, shade, shine
+# bombs: transparent, outline, main, shade, shine
 bomb_orange:    .word 0x00000000, 0x007A3410, 0x00F28C28, 0x00C9641A, 0x00FFFFFF
 bomb_green:     .word 0x00000000, 0x001F4D2B, 0x006CC24A, 0x003E9142, 0x00FFFFFF
 bomb_yellow:    .word 0x00000000, 0x008A5A12, 0x00FFD23F, 0x00E0A526, 0x00FFFFFF
 bomb_brown:     .word 0x00000000, 0x003F2314, 0x00A0673C, 0x007A4A2A, 0x00FFFFFF
 # bomb colour index 0..3 -> palette address
 bomb_palettes:  .word bomb_orange, bomb_green, bomb_yellow, bomb_brown
-# Hidden bombs: every colour index points at the same flat palette
 bomb_hidden:   
     .word 0x00000000, 0x00464646, 0x00B4B4B4, 0x007a797a, 0x00FFFFFF
 hidden_palette:
@@ -233,7 +225,7 @@ draw_bombs:
     
     add $s0, $a0, $zero         # s0 = grid pointer
     addi $s1, $zero, GRID_ROWS
-    addi $s2, $gp, GRID_OFFSET
+    addi $s2, $gp, BOMB_OFFSET
     
     grid_row_loop:
         add $s3, $s2, $zero
@@ -285,7 +277,14 @@ draw_dynamic:
     # 3. Gwen
     add $a0, $s1, $zero
     jal draw_gwen
-    # TODO: DRAW BOMB WHERE GWEN IS LOCATED
+    
+    # 4. Bomb Gwen is holding (in front of her)
+    add $a0, $gp, $s1
+    addi $a0, $a0, 3080
+    la $t0, gwen_hold
+    lbu $a1, 0($t0)
+    la $a2, bomb_palettes
+    jal draw_bomb
 
     pop($s3)
     pop($s2)
@@ -382,4 +381,84 @@ draw_sprite:
             j sprite_column
         
     end_sprite_column:
+        jr $ra
+
+# Finds the nearest bomb above Gwen in her current location.
+#
+# Returns:
+#   v0 = index of bomb's colour, -1 if no bomb found
+#   v1 = bomb offset
+#   a0 = address of bomb's cell in bomb array
+find_bomb:
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    
+    # 1. Calculate Gwen's centre x-coordinate in pixels
+    lw $t0, gwen_offset
+    andi $t0, $t0, 511      # isolate horizontal byte offset
+    srl $t0, $t0, 2         # convert bytes to pixels
+    addi $t0, $t0, 5        # Gwen's centre is 5 pixels from left
+    
+    # 2. Calculate which grid column she's in
+    addi $t0, $t0, -8
+    bltz $t0, bomb_none
+    
+    addi $t1, $zero, 7
+    divu $t0, $t1
+    mflo $s3
+    
+    sltiu $t1, $s3, GRID_COLS
+    beq $t1, $zero, bomb_none
+    
+    # 3. Start at the bottom row of the bombs array
+    la $s0, bombs
+    addi $s0, $s0, 252
+    sll $t0, $s3, 2
+    add $s0, $s0, $t0
+    
+    # 4. Calculate the screen offset of that bomb
+    addi $s1, $zero, 36384
+    
+    # Add column * 28
+    sll $t0, $s3, 2
+    sll $t1, $s3, 3
+    add $t0, $t0, $t1
+    sll $t1, $s3, 4
+    add $t0, $t0, $t1
+    add $s1, $s1, $t0       # s1 = bomb's screen offset
+    
+    addi $s2, $zero, GRID_ROWS
+    
+    find_bomb_loop:
+        lw $t0, 0($s0)
+        
+        # Is this cell occupied?
+        sltiu $t1, $t0, NUM_COLOURS
+        bne $t1, $zero, bomb_found
+        
+        # Move one row upwards
+        addi $s0, $s0, -28
+        addi $s1, $s1, -3584
+        addi $s2, $s2, -1
+        
+        bne $s2, $zero, find_bomb_loop
+        
+    bomb_none:
+        addi $v0, $zero, -1
+        add $v1, $zero, $zero
+        add $a0, $zero, $zero
+        j find_bomb_done
+    
+    bomb_found:
+        add $v0, $t0, $zero
+        add $v1, $s1, $zero
+        add $a0, $s0, $zero
+        
+    find_bomb_done:
+        pop($s3)
+        pop($s2)
+        pop($s1)
+        pop($s0)
         jr $ra
