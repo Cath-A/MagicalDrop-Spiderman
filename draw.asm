@@ -162,10 +162,14 @@ erase_gwen:
     pop($ra)
     jr $ra
 
-# Draws one bomb.
-# Params: a0 = screen address, a1 = colour index (>= NUM_COLOURS draws nothing),
-#         a2 = palette table (bomb_palettes, or hidden_palette to hide the colour)
+# Draws a bomb.
+# Params: a0 = its address, a1 = its colour
 draw_bomb:
+    la $a2, bomb_palettes
+    j draw_bomb_colours
+draw_hidden_bomb:
+    la $a2, hidden_palette
+draw_bomb_colours:
     push($ra)
     sltiu $t0, $a1, NUM_COLOURS
     beq $t0, $zero, draw_bomb_done
@@ -193,15 +197,14 @@ draw_hidden_bombs:
     add $s3, $a1, $zero         # s3 = reveal flag
     
     draw_new_bomb:
+        add $a0, $s2, $zero
+        lw $a1, 0($s0)
         beq $s3, $zero, hide_bomb
-        la $a2, bomb_palettes
-        j draw_new_bomb_start
+        jal draw_bomb
+        j new_bomb_next
         hide_bomb:
-            la $a2, hidden_palette        
-        draw_new_bomb_start:
-            add $a0, $s2, $zero
-            lw $a1, 0($s0)
-            jal draw_bomb
+            jal draw_hidden_bomb      
+        new_bomb_next:
             addi $s0, $s0, 4
             addi $s2, $s2, 28
             addi $s1, $s1, -1
@@ -233,7 +236,6 @@ draw_bombs:
         grid_col_loop:
             add $a0, $s3, $zero
             lw $a1, 0($s0)
-            la $a2, bomb_palettes
             jal draw_bomb
             addi $s0, $s0, 4
             addi $s3, $s3, 28
@@ -283,7 +285,6 @@ draw_dynamic:
     addi $a0, $a0, 3080
     la $t0, gwen_hold
     lbu $a1, 0($t0)
-    la $a2, bomb_palettes
     jal draw_bomb
 
     pop($s3)
@@ -381,84 +382,4 @@ draw_sprite:
             j sprite_column
         
     end_sprite_column:
-        jr $ra
-
-# Finds the nearest bomb above Gwen in her current location.
-#
-# Returns:
-#   v0 = index of bomb's colour, -1 if no bomb found
-#   v1 = bomb offset
-#   a0 = address of bomb's cell in bomb array
-find_bomb:
-    push($s0)
-    push($s1)
-    push($s2)
-    push($s3)
-    
-    # 1. Calculate Gwen's centre x-coordinate in pixels
-    lw $t0, gwen_offset
-    andi $t0, $t0, 511      # isolate horizontal byte offset
-    srl $t0, $t0, 2         # convert bytes to pixels
-    addi $t0, $t0, 5        # Gwen's centre is 5 pixels from left
-    
-    # 2. Calculate which grid column she's in
-    addi $t0, $t0, -8
-    bltz $t0, bomb_none
-    
-    addi $t1, $zero, 7
-    divu $t0, $t1
-    mflo $s3
-    
-    sltiu $t1, $s3, GRID_COLS
-    beq $t1, $zero, bomb_none
-    
-    # 3. Start at the bottom row of the bombs array
-    la $s0, bombs
-    addi $s0, $s0, 252
-    sll $t0, $s3, 2
-    add $s0, $s0, $t0
-    
-    # 4. Calculate the screen offset of that bomb
-    addi $s1, $zero, 36384
-    
-    # Add column * 28
-    sll $t0, $s3, 2
-    sll $t1, $s3, 3
-    add $t0, $t0, $t1
-    sll $t1, $s3, 4
-    add $t0, $t0, $t1
-    add $s1, $s1, $t0       # s1 = bomb's screen offset
-    
-    addi $s2, $zero, GRID_ROWS
-    
-    find_bomb_loop:
-        lw $t0, 0($s0)
-        
-        # Is this cell occupied?
-        sltiu $t1, $t0, NUM_COLOURS
-        bne $t1, $zero, bomb_found
-        
-        # Move one row upwards
-        addi $s0, $s0, -28
-        addi $s1, $s1, -3584
-        addi $s2, $s2, -1
-        
-        bne $s2, $zero, find_bomb_loop
-        
-    bomb_none:
-        addi $v0, $zero, -1
-        add $v1, $zero, $zero
-        add $a0, $zero, $zero
-        j find_bomb_done
-    
-    bomb_found:
-        add $v0, $t0, $zero
-        add $v1, $s1, $zero
-        add $a0, $s0, $zero
-        
-    find_bomb_done:
-        pop($s3)
-        pop($s2)
-        pop($s1)
-        pop($s0)
         jr $ra

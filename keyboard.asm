@@ -61,7 +61,7 @@ respond_to_S:
     j keyboard_done
 
 respond_to_W:
-    
+    jal gwen_throw
     j keyboard_done
 
 keyboard_done:

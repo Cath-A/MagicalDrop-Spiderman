@@ -8,7 +8,6 @@
 # Resets all game state.
 init_game:
     push($ra)
-    
     # fill the grid with BOMB_EMPTY
     la $t0, bombs
     addi $t1, $zero, GRID_COLS
@@ -130,7 +129,91 @@ move_gwen:
 move_gwen_done:
     pop($ra)
     jr $ra
+
+# Finds the nearest bomb above Gwen in her current location.
+#
+# Returns:
+#   v0 = index of bomb's colour, -1 if no bomb found
+#   v1 = bomb offset
+#   a0 = address of bomb's cell in bomb array
+#   a1 = Gwen's column, -1 if she is outside the grid
+find_bomb:
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
     
+    # 1. Calculate Gwen's centre x-coordinate in pixels
+    lw $t0, gwen_offset
+    andi $t0, $t0, 511      # isolate horizontal byte offset
+    srl $t0, $t0, 2         # convert bytes to pixels
+    addi $t0, $t0, 5        # Gwen's centre is 5 pixels from left
+    
+    # 2. Calculate which grid column she's in
+    addi $t0, $t0, -8
+    bltz $t0, bomb_outside
+    addi $t1, $zero, 7
+    divu $t0, $t1
+    mflo $s3
+    
+    sltiu $t1, $s3, GRID_COLS
+    beq $t1, $zero, bomb_outside
+    
+    # 3. Start at the bottom row of the bombs array
+    la $s0, bombs
+    addi $s0, $s0, 252
+    sll $t0, $s3, 2
+    add $s0, $s0, $t0
+    
+    # 4. Calculate the screen offset of that bomb
+    addi $s1, $zero, 36384
+    
+    # Add column * 28
+    sll $t0, $s3, 2
+    sll $t1, $s3, 3
+    add $t0, $t0, $t1
+    sll $t1, $s3, 4
+    add $t0, $t0, $t1
+    add $s1, $s1, $t0       # s1 = bomb's screen offset
+    
+    addi $s2, $zero, GRID_ROWS
+    
+    find_bomb_loop:
+        lw $t0, 0($s0)
+        sltiu $t1, $t0, NUM_COLOURS
+        bne $t1, $zero, bomb_found
+        addi $s0, $s0, -28
+        addi $s1, $s1, -3584
+        addi $s2, $s2, -1
+        bne $s2, $zero, find_bomb_loop
+        
+    # column is empty
+    addi $v0, $zero, -1
+    add $v1, $zero, $zero
+    add $a0, $zero, $zero
+    add $a1, $s3, $zero
+    j find_bomb_done
+    
+    bomb_outside:
+        addi $v0, $zero, -1
+        add $v1, $zero, $zero
+        add $a0, $zero, $zero
+        addi $a1, $zero, -1
+        j find_bomb_done
+    
+    bomb_found:
+        add $v0, $t0, $zero
+        add $v1, $s1, $zero
+        add $a0, $s0, $zero
+        add $a1, $s3, $zero
+        
+    find_bomb_done:
+        pop($s3)
+        pop($s2)
+        pop($s1)
+        pop($s0)
+        jr $ra
+
 gwen_shoot:
     push($ra)
     #   v0 = index of bomb's colour, -1 if no bomb found
@@ -139,7 +222,6 @@ gwen_shoot:
 gwen_shoot_loop:
     jal find_bomb
     blt $v0, $zero, end_gwen_shoot 
-    
     la $t2, gwen_hold
     lbu $t0, 0($t2)
     beq $t0, BOMB_EMPTY, gwen_bomb_found
@@ -169,14 +251,65 @@ end_gwen_shoot:
     
 gwen_throw:
     push($ra)
-    
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    push($s4)
     # 1) check if she even has a bombs, if not go to end_gwen_throw
+    la $s0, gwen_hold
+    lbu $s1, 1($s0)                     # how many bombs she has
+    beq $s1, $zero, end_gwen_throw
+    #   a0 = address of bomb's cell in bomb array
+    jal find_bomb
+    bltz $a1, end_gwen_throw 
+    bltz $v0, throw_top_cell
     
-    # 2) now we know she has a bomb... she throws it
-    # 3) reset her holding data
-    # 4) redraw the screen with the x amount of bombs above her
-    # func: gwen_throw_bombs
+    addi $s2, $a0, 28                   # new bomb next location
+    add $s4, $gp, $v1
+    addi $s4, $s4, 3584                 # new bomb next address
+    j throw_set_limit
+    
+throw_top_cell:
+    la $s2, bombs 
+    sll $t0, $a1, 2
+    add $s2, $s2, $t0                   # grid: bombs + 4col
+    
+    addi $t1, $zero, 28
+    mult $a1, $t1
+    mflo $t0
+    addi $t0, $t0, BOMB_OFFSET
+    add $s4, $gp, $t0                   # screen: gp + BOMB_OFFSET + 28col
+
+throw_set_limit:
+    la $s3, bombs 
+    addi $s3, $s3, 252
+
+gwen_throw_loop:
+    beq $s1, $zero, end_gwen_throw
+    bge $s2, $s3, end_gwen_throw
+    
+    lbu $a1, 0($s0)
+    sw $a1, 0($s2)
+    add $a0, $s4, $zero
+    jal draw_bomb
+    
+    addi $s2, $s2, 28
+    addi $s4, $s4, 3584
+    addi $s1, $s1, -1
+    j gwen_throw_loop
     
 end_gwen_throw:
+    # 3) Reset her holding data
+    sb $s1, 1($s0)
+    bne $s1, $zero, throw_done
+    addi $t0, $zero, BOMB_EMPTY
+    sb $t0, 0($s0)
+throw_done:
+    pop($s4)
+    pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
     pop($ra)
     jr $ra
