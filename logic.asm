@@ -126,7 +126,22 @@ move_gwen:
     # Save previous position for erasing, then update current position
     sw $t0, gwen_prev_offset
     sw $t2, gwen_offset
-
+    
+    # Update gwen_col
+    # 1. Calculate Gwen's centre x-coordinate in pixels
+    andi $t4, $t2, 511      # isolate horizontal byte offset
+    srl $t4, $t4, 2         # convert bytes to pixels
+    addi $t4, $t4, -3
+    bltz $t4, gwen_col_outside
+    addi $t5, $zero, 7
+    divu $t4, $t5
+    mflo $t4
+    sltiu $t5, $t4, GRID_COLS
+    bne $t5, $zero, gwen_col_store
+gwen_col_outside: 
+    addi $t4, $zero, -1
+gwen_col_store:
+    sw $t4, gwen_col
 move_gwen_done:
     pop($ra)
     jr $ra
@@ -137,36 +152,23 @@ move_gwen_done:
 #   v0 = index of bomb's colour, -1 if no bomb found
 #   v1 = bomb offset
 #   a0 = address of bomb's cell in bomb array
-#   a1 = Gwen's column, -1 if she is outside the grid
 find_bomb:
     push($s0)
     push($s1)
     push($s2)
     push($s3)
     
-    # 1. Calculate Gwen's centre x-coordinate in pixels
-    lw $t0, gwen_offset
-    andi $t0, $t0, 511      # isolate horizontal byte offset
-    srl $t0, $t0, 2         # convert bytes to pixels
-    addi $t0, $t0, 5        # Gwen's centre is 5 pixels from left
+    # 1. Read which grid column she's in
+    lw $s3, gwen_col
+    bltz $s3, bomb_outside
     
-    # 2. Calculate which grid column she's in
-    addi $t0, $t0, -8
-    bltz $t0, bomb_outside
-    addi $t1, $zero, 7
-    divu $t0, $t1
-    mflo $s3
-    
-    sltiu $t1, $s3, GRID_COLS
-    beq $t1, $zero, bomb_outside
-    
-    # 3. Start at the bottom row of the bombs array
+    # 2. Start at the bottom row of the bombs array
     la $s0, bombs
     addi $s0, $s0, 252
     sll $t0, $s3, 2
     add $s0, $s0, $t0
     
-    # 4. Calculate the screen offset of that bomb
+    # 3. Calculate the screen offset of that bomb
     addi $s1, $zero, 36384
     
     # Add column * 28
@@ -264,9 +266,9 @@ gwen_throw:
     la $s0, gwen_hold
     lbu $s1, 1($s0)                     # how many bombs she has
     beq $s1, $zero, end_gwen_throw
-    #   a0 = address of bomb's cell in bomb array
-    jal find_bomb
-    bltz $a1, end_gwen_throw 
+    lw $t0, gwen_col
+    bltz $t0, end_gwen_throw
+    jal find_bomb 
     bltz $v0, throw_top_cell
     
     addi $s2, $a0, 28                   # new bomb next location
@@ -275,12 +277,13 @@ gwen_throw:
     j throw_set_limit
     
 throw_top_cell:
+    lw $t2, gwen_col
     la $s2, bombs 
-    sll $t0, $a1, 2
+    sll $t0, $t2, 2
     add $s2, $s2, $t0                   # grid: bombs + 4col
     
     addi $t1, $zero, 28
-    mult $a1, $t1
+    mult $t2, $t1
     mflo $t0
     addi $t0, $t0, BOMB_OFFSET
     add $s4, $gp, $t0                   # screen: gp + BOMB_OFFSET + 28col

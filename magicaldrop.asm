@@ -41,8 +41,10 @@ gwen_offset:
 gwen_prev_offset:
     .word 40480          # previous position for erasing
 gwen_hold:
-    .byte BOMB_EMPTY, 0           # colour of the bombs she holds (BOMB_EMPTY = none), 
-    .align 2                      # how many bombs she holds
+    .byte BOMB_EMPTY, 0  # colour of the bombs she holds (BOMB_EMPTY = none), 
+    .align 2             # how many bombs she holds
+gwen_col:       
+    .word 0              # the column gwen is in
 
 # Timing
 cycles:
@@ -115,7 +117,6 @@ sleep:
 
 refresh_screen:
     push($ra)
-    lw $a0, gwen_prev_offset
     jal erase_gwen              # black out where she was
     jal draw_static_screen      # repaint water, skyline, frame over it
     
@@ -124,9 +125,6 @@ refresh_screen:
     lw $t1, 4($t2)             # t1 = target sleep cycles
     srl $t1, $t1, 1             # t1 = target sleep cycles / 2
     sge $a0, $t0, $t1           # a0 = reveal flag
-    lw $a1, gwen_offset         # a1 = gwen_offset
-    la $a2, bombs               # a2 = grid_ptr
-    la $a3, new_bombs           # a3 = new_bombs_ptr
     jal draw_dynamic
     
     pop($ra)

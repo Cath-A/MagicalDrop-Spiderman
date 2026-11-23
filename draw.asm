@@ -140,9 +140,9 @@ draw_static_screen:
     jr $ra
 
 # Draws Gwen sprite.
-# Params: a0 = gwen_offset
 draw_gwen:
     push($ra)
+    lw $a0, gwen_offset
     add $a0, $gp, $a0
     la $a1, gwen_sprite
     la $a2, gwen_palette
@@ -151,9 +151,9 @@ draw_gwen:
     jr $ra
 
 # Erases Gwen sprite.
-# Params: a0 = gwen_offset
 erase_gwen:
     push($ra)
+    lw $a0, gwen_prev_offset
     add $a0, $gp, $a0
     addi $a1, $zero, 15
     addi $a2, $zero, 11
@@ -192,7 +192,7 @@ draw_bomb_done:
     jr $ra
 
 # Draws incoming bombs.
-# Params: a0 = bombs pointer, a1 = reveal flag (1 to reveal, 0 to hide)
+# Params: a1 = reveal flag (1 to reveal, 0 to hide)
 draw_hidden_bombs:
     push($ra)
     push($s0)
@@ -200,10 +200,10 @@ draw_hidden_bombs:
     push($s2)
     push($s3)
     
-    add $s0, $a0, $zero         # s0 = bombs pointer
+    la $s0, new_bombs
     addi $s1, $zero, GRID_COLS
     addi $s2, $gp, NEXT_ROW_OFFSET
-    add $s3, $a1, $zero         # s3 = reveal flag
+    add $s3, $a0, $zero         # s3 = reveal flag
     
     draw_new_bomb:
         add $a0, $s2, $zero
@@ -226,7 +226,6 @@ draw_hidden_bombs:
     jr $ra
 
 # Draws bombs inside the frame
-# Params: a0 = start of where the bombs are located
 draw_bombs:
     push($ra)
     push($s0)
@@ -235,7 +234,7 @@ draw_bombs:
     push($s3)
     push($s4)
     
-    add $s0, $a0, $zero         # s0 = grid pointer
+    la $s0, bombs
     addi $s1, $zero, GRID_ROWS
     addi $s2, $gp, BOMB_OFFSET
     
@@ -263,42 +262,28 @@ draw_bombs:
     jr $ra
 
 # Draws anything dynamic.
-# Params: a0 = reveal, a1 = gwen_offset, a2 = grid_ptr, a3 = new_bombs_ptr
+# Params: a0 = reveal
 draw_dynamic:
     push($ra)
     push($s0)
-    push($s1)
-    push($s2)
-    push($s3)
-
+    
     add $s0, $a0, $zero
-    add $s1, $a1, $zero
-    add $s2, $a2, $zero
-    add $s3, $a3, $zero
-
+    
     # 1. Incoming row
-    add $a0, $s3, $zero
-    add $a1, $s0, $zero
+    add $a0, $s0, $zero
     jal draw_hidden_bombs
     
-    # 2. Gwen
-    add $a0, $s1, $zero
     jal draw_gwen
-
-    # 3. Grid
-    add $a0, $s2, $zero
     jal draw_bombs
     
     # 4. Bomb Gwen is holding (in front of her)
-    add $a0, $gp, $s1
+    lw $t0, gwen_offset
+    add $a0, $gp, $t0
     addi $a0, $a0, 3080
     la $t0, gwen_hold
     lbu $a1, 0($t0)
     jal draw_bomb
 
-    pop($s3)
-    pop($s2)
-    pop($s1)
     pop($s0)
     pop($ra)
     jr $ra
