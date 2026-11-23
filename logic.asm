@@ -111,6 +111,7 @@ shift_done:
     jr $ra
     
 # Move Gwen. If a0 = 1 then she will move right and if a0 = -1 then she will move left.
+# REMEMBER WHEN GWEN MOVES THE WEB SHOULD BE OVERRITTEN TO ERASE OLD AND DRAW NEW
 move_gwen:
     push($ra)
     lw $t0, gwen_offset
@@ -214,6 +215,8 @@ find_bomb:
         pop($s0)
         jr $ra
 
+animate_web:
+
 gwen_shoot:
     push($ra)
     #   v0 = index of bomb's colour, -1 if no bomb found
@@ -248,7 +251,6 @@ end_gwen_shoot:
     pop($ra)
     jr $ra
     
-    
 gwen_throw:
     push($ra)
     push($s0)
@@ -256,6 +258,8 @@ gwen_throw:
     push($s2)
     push($s3)
     push($s4)
+    push($s5)
+    add $s5, $zero, $zero
     # 1) check if she even has a bombs, if not go to end_gwen_throw
     la $s0, gwen_hold
     lbu $s1, 1($s0)                     # how many bombs she has
@@ -291,6 +295,7 @@ gwen_throw_loop:
     
     lbu $a1, 0($s0)
     sw $a1, 0($s2)
+    add $s5, $s2, $zero
     add $a0, $s4, $zero
     jal draw_bomb
     
@@ -306,8 +311,194 @@ end_gwen_throw:
     addi $t0, $zero, BOMB_EMPTY
     sb $t0, 0($s0)
 throw_done:
+    add $v0, $s5, $zero
+    pop($s5)
     pop($s4)
     pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
+    pop($ra)
+    jr $ra
+
+# Given a grid position, return the row and column in the grid
+# a0 = grid position
+# v0 = column, v1 = row
+get_bomb_row_col:
+    la $t0, bombs
+    sub $t0, $a0, $t0
+    srl $t0, $t0, 2
+    addi $t1, $zero, GRID_COLS
+    divu $t0, $t1
+    mflo $v1
+    mfhi $v0
+    jr $ra
+# Given a bomb's row address, return the address on the screen
+# a0 = grid address
+# v0 = screen address
+get_bomb_address:
+    push($ra)
+    jal get_bomb_row_col
+    # get the offset
+    addi $t0, $zero, 28
+    mult $v0, $t0
+    mflo $v0
+    addi $t0, $zero, 3584
+    mult $t0, $v1
+    mflo $t0
+    add $v0, $v0, $t0
+    add $v0, $v0, $gp
+    addi $v0, $v0, BOMB_OFFSET
+    pop($ra)
+    jr $ra
+
+# Checks if there's a match 3 from a given grid starting position (bottom up)
+# a0 = starting grid position
+trigger:
+    la $t3, bombs
+    addi $t3, $t3, 56
+    blt $a0, $t3, trigger_done
+    lw $t0, 0($a0)
+    sltiu $t3, $t0, NUM_COLOURS
+    beq $t3, $zero, trigger_done
+    lw $t1, -28($a0)
+    lw $t2, -56($a0)
+    bne $t0, $t1, trigger_done
+    bne $t1, $t2, trigger_done
+# Finds all adjacent, same coloured bombs (from bottom up), then calls draw_explosion
+# Pre: there is a match 3 
+# a0 = starting grid position
+flood_fill:
+    push($ra)
+    push($s0)
+    push($s1)
+    lw $s0, 0($a0)
+    addi $s1, $a0, 0
+    # 0) Push wincon onto stack after a short pause for visuals
+    li $v0, 32
+    li $a0, 255
+    syscall
+    push($zero)
+    push($s1)
+    explode_loop:
+        pop($s1)
+        beq $s1, $zero, end_explosion
+        lw $t0, 0($s1)
+        bne $t0, $s0, explode_loop
+        addi $t0, $zero, BOMB_EMPTY
+        sw $t0, 0($s1)
+        add $a0, $s1, $zero 
+        jal get_bomb_address
+        add $a0, $v0, $zero
+        addi $a1, $zero, 7                  
+        addi $a2, $zero, 7              
+        add $a3, $zero, $zero
+        jal rectangle
+        add $a0, $s1, $zero
+        add $a1, $s0, $zero
+        jal push_adjacent_bombs
+        j explode_loop
+end_explosion:
+    pop($s1)
+    pop($s0)
+    pop($ra)
+    jr $ra
+trigger_done:
+    jr $ra
+    
+    
+# Given a grid address a0, push only the same coloured neighbours in boundary 
+push_adjacent_bombs:
+    add $t9, $ra, $zero
+    jal get_bomb_row_col
+    add $t1, $a0, $zero
+    add $t2, $a1, $zero
+left:
+    beq $v0, $zero, right
+    lw $t3, -4($t1)
+    bne $t3, $t2, right
+    addi $t6, $t1, -4
+    push($t6)
+right:
+    addi $t0, $zero, GRID_COLS
+    addi $t0, $t0, -1
+    beq $v0, $t0, up
+    lw $t3, 4($t1)
+    bne $t3, $t2, up
+    addi $t6, $t1, 4
+    push($t6)
+up:
+    beq $v1, $zero, down
+    lw $t3, -28($t1)
+    bne $t3, $t2, down
+    addi $t6, $t1, -28
+    push($t6)
+down:
+    addi $t0, $zero, GRID_ROWS
+    addi $t0, $t0, -1
+    beq $v1, $t0, end_get_adjacent_bombs
+    lw $t3, 28($t1)
+    bne $t3, $t2, end_get_adjacent_bombs
+    addi $t6, $t1, 28
+    push($t6)
+end_get_adjacent_bombs:
+    jr $t9
+    
+apply_gravity:
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    
+    # Checks to see if it's time to animate gravity
+    la $t0, cycles
+    lw $t0, 0($t0)
+    andi $t0, $t0, 15
+    bne $t0, $zero, gravity_done
+    
+    la $s0, bombs                       # s0 = starting bomb grid address
+    addi $s1, $zero, GRID_COLS
+    sll $s1, $s1, 2                     # col * 4 = next row offset in grid
+    add $s1, $s0, $s1                   # s1 = next row offset + grid address 
+    addi $s2, $s0, 280                  # s2 = starting address + length of grid
+    
+    gravity_loop:
+        beq $s1, $s2, gravity_done
+        
+        # Check if there is a bomb
+        lw $t1, 0($s1)
+        bge $t1, BOMB_EMPTY, grounded
+        # Check if there's a bomb above it
+        lw $t0, -28($s1)
+        blt $t0, BOMB_EMPTY, grounded
+        
+        # Move the bomb upwards
+        sw $t1, -28($s1)
+        addi $t2, $zero, BOMB_EMPTY
+        sw $t2, 0($s1)
+        
+        addi $a0, $s1, -28
+        jal get_bomb_address
+        add $a0, $v0, $zero
+        lw $a1, -28($s1)
+        jal draw_bomb
+        
+        # Erase
+        add $a0, $s1, $zero
+        jal get_bomb_address    
+        add $a0, $v0, $zero
+        addi $a1, $zero, 7                  
+        addi $a2, $zero, 7              
+        add $a3, $zero, $zero
+        jal rectangle
+        
+        addi $t2, $zero, BOMB_EMPTY
+        sw $t2, 0($s1)
+    grounded:
+        addi $s1, $s1, 4 
+        j gravity_loop
+        
+gravity_done:
     pop($s2)
     pop($s1)
     pop($s0)

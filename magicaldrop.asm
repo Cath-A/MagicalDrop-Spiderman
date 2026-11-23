@@ -42,13 +42,11 @@ gwen_prev_offset:
     .word 40480          # previous position for erasing
 gwen_hold:
     .byte BOMB_EMPTY, 0           # colour of the bombs she holds (BOMB_EMPTY = none), 
-    .align 2
-                         # how many bombs she holds
-gwen_score:
-    .word 0              # score = number of bubbles popped
+    .align 2                      # how many bombs she holds
+
 # Timing
 cycles:
-    .byte 0, 255         # sleep cycles passed since the last row advancement, 
+    .word 0, 500         # sleep cycles passed since the last row advancement, 
                          # cycles until the row shifts (target_cycles * 0.016 = seconds)
     .align 2
 # Playfield (each cell is one word: colour index 0..3, or BOMB_EMPTY)
@@ -77,21 +75,19 @@ game_loop:
     beq $v0, $zero, skip_keypress
     jal refresh_screen 
     
-    # 2a. Check for collisions   
-    
-    
-	# 2b. Update locations (capsules)
+	# 2 Update locations
     skip_keypress:
+    jal apply_gravity
+    
     la $t3, cycles
-    lbu $t0, 1($t3)
-    lbu $t1, 0($t3)
+    lw $t0, 4($t3)
+    lw $t1, 0($t3)
+
     bne $t0, $t1, check_reveal
     
 	jal shift_down
 	la $t3, cycles
-	sb $zero, 0($t3)
-	
-	
+	sw $zero, 0($t3)
     
 	# 3. Draw the screen
 	jal refresh_screen
@@ -109,9 +105,9 @@ sleep:
 	syscall
 	   
 	la $t3, cycles
-	lbu $t0, 0($t3)
+	lw $t0, 0($t3)
 	addiu $t0, $t0, 1
-	sb $t0, 0($t3)
+	sw $t0, 0($t3)
 	   
     # 5. Go back to Step 1
     j game_loop
@@ -124,8 +120,8 @@ refresh_screen:
     jal draw_static_screen      # repaint water, skyline, frame over it
     
     la $t2, cycles
-    lbu $t0, 0($t2)             # t0 = current sleep cycle
-    lbu $t1, 1($t2)             # t1 = target sleep cycles
+    lw $t0, 0($t2)             # t0 = current sleep cycle
+    lw $t1, 4($t2)             # t1 = target sleep cycles
     srl $t1, $t1, 1             # t1 = target sleep cycles / 2
     sge $a0, $t0, $t1           # a0 = reveal flag
     lw $a1, gwen_offset         # a1 = gwen_offset

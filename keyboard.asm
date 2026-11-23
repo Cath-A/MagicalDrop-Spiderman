@@ -62,6 +62,8 @@ respond_to_S:
 
 respond_to_W:
     jal gwen_throw
+    addi $a0, $v0, 0
+    jal trigger
     j keyboard_done
 
 keyboard_done:

@@ -162,6 +162,15 @@ erase_gwen:
     pop($ra)
     jr $ra
 
+draw_web:
+    # looks at where gwen is
+    # draws a straight white line of pixels up to the middle of the bomb
+    # draws a flat line on the bottom of the bomb/top of screen
+erase_web:
+    # look at where gwen it
+    # draws a black line above her head
+
+
 # Draws a bomb.
 # Params: a0 = its address, a1 = its colour
 draw_bomb:
@@ -271,14 +280,14 @@ draw_dynamic:
     add $a0, $s3, $zero
     add $a1, $s0, $zero
     jal draw_hidden_bombs
-
-    # 2. Grid
-    add $a0, $s2, $zero
-    jal draw_bombs
-
-    # 3. Gwen
+    
+    # 2. Gwen
     add $a0, $s1, $zero
     jal draw_gwen
+
+    # 3. Grid
+    add $a0, $s2, $zero
+    jal draw_bombs
     
     # 4. Bomb Gwen is holding (in front of her)
     add $a0, $gp, $s1
