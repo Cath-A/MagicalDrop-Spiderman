@@ -111,7 +111,6 @@ shift_done:
     jr $ra
     
 # Move Gwen. If a0 = 1 then she will move right and if a0 = -1 then she will move left.
-# REMEMBER WHEN GWEN MOVES THE WEB SHOULD BE OVERRITTEN TO ERASE OLD AND DRAW NEW
 move_gwen:
     push($ra)
     lw $t0, gwen_offset
@@ -119,17 +118,19 @@ move_gwen:
     add $t2, $t0, $t1
 
     li $t3, 40460               # left limit
-    blt $t2, $t3, move_gwen_done
+    blt $t2, $t3, move_gwen_end
     li $t3, 40652               # right limit
-    bgt $t2, $t3, move_gwen_done
-
-    # Save previous position for erasing, then update current position
-    sw $t0, gwen_prev_offset
-    sw $t2, gwen_offset
+    bgt $t2, $t3, move_gwen_end
+    
+    add $t8, $t0, $zero
+    add $t9, $t2, $zero
+    jal erase_web
+    sw $t8, gwen_prev_offset
+    sw $t9, gwen_offset
     
     # Update gwen_col
     # 1. Calculate Gwen's centre x-coordinate in pixels
-    andi $t4, $t2, 511      # isolate horizontal byte offset
+    andi $t4, $t9, 511      # isolate horizontal byte offset
     srl $t4, $t4, 2         # convert bytes to pixels
     addi $t4, $t4, -3
     bltz $t4, gwen_col_outside
@@ -142,7 +143,10 @@ gwen_col_outside:
     addi $t4, $zero, -1
 gwen_col_store:
     sw $t4, gwen_col
-move_gwen_done:
+    lw $t0, web_visible
+    beq $t0, $zero, move_gwen_end
+    jal draw_web 
+move_gwen_end:
     pop($ra)
     jr $ra
 
@@ -218,7 +222,62 @@ find_bomb:
         jr $ra
 
 animate_web:
+    push($ra)
+    lw $t0, time
+    andi $t0, $t0, 63
+    beq $t0, $zero, animate_web_draw
+    addi $t1, $zero, 32
+    beq $t0, $t1, animate_web_erase
+    j animate_web_done
+animate_web_draw:
+    jal draw_web
+    addi $t0, $zero, 1
+    sw $t0, web_visible
+    j animate_web_done
+animate_web_erase:
+    jal erase_web
+    sw $zero, web_visible
+animate_web_done:
+    pop($ra)
+    jr $ra
 
+animate_green_goblin:
+    push($ra)
+    lw $t0, time
+    andi $t0, $t0, 15
+    bne $t0, $zero, animate_goblin_done
+    # remember where to erase
+    lw $t0, goblin_offset
+    sw $t0, goblin_prev_offset
+    # y += dir
+    lw $t1, goblin_dir
+    lw $t2, goblin_y
+    add $t2, $t2, $t1
+    sw $t2, goblin_y
+    # dir * 512 = one row up or down
+    sll $t3, $t1, 9
+    add $t0, $t0, $t3
+    sw $t0, goblin_offset
+    # reached the top
+    blez $t2, goblin_reverse
+    # reached the bottom
+    addi $t4, $zero, GOBLIN_BOB_RANGE
+    bge $t2, $t4, goblin_reverse
+    j goblin_move_draw
+goblin_reverse:
+    # reverse direction
+    sub $t1, $zero, $t1
+    sw $t1, goblin_dir
+goblin_move_draw:
+    # clears the old position
+    jal erase_green_goblin
+    # draws at the new one
+    jal draw_green_goblin
+animate_goblin_done:
+    pop($ra)
+    jr $ra
+    
+    
 gwen_shoot:
     push($ra)
     #   v0 = index of bomb's colour, -1 if no bomb found

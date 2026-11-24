@@ -20,10 +20,13 @@
 .eqv GRID_COLS 7
 .eqv GRID_ROWS 10
 .eqv NUM_COLOURS 4
-.eqv BOMB_EMPTY 4           # any index >= NUM_COLOURS means "no bomb"
-.eqv NEXT_ROW_OFFSET 32     # incoming row, rows 0-6
-.eqv BOMB_OFFSET 4128       # playfield top left, row 8
-
+.eqv BOMB_EMPTY 4            # any index >= NUM_COLOURS means "no bomb"
+.eqv NEXT_ROW_OFFSET 32      # incoming row, rows 0-6
+.eqv BOMB_OFFSET 4128        # playfield top left, row 8
+.eqv WEB_DASH 3
+.eqv WEB_GAP 2
+.eqv GOBLIN_BOMB_OFFSET 4620 # offset from goblin's top left row
+.eqv GOBLIN_BOB_RANGE 6
     .data
 ##############################################################################
 # Immutable Data
@@ -45,12 +48,33 @@ gwen_hold:
     .align 2             # how many bombs she holds
 gwen_col:       
     .word 0              # the column gwen is in
-
+# Green Goblin
+goblin_offset:
+    .word 260          # byte offset from $gp of his top left
+goblin_prev_offset:
+    .word 260          # previous position for erasing
+goblin_bomb_colour: 
+    .word 3
+goblin_dir:
+    .word 1
+goblin_y:
+    .word 0
+# Web
+web_visible:
+    .word 0              # 1 = visible, 0 = hidden
+web_addr:
+    .word 0
+web_height:
+    .word 0
+web_cap_addr:
+    .word 0
 # Timing
 cycles:
     .word 0, 500         # sleep cycles passed since the last row advancement, 
                          # cycles until the row shifts (target_cycles * 0.016 = seconds)
     .align 2
+time:
+    .word 0              # global relative time to base state off of 
 # Playfield (each cell is one word: colour index 0..3, or BOMB_EMPTY)
 new_bombs:
     .space 28            # GRID_COLS * 4 bytes: the incoming bombs
@@ -75,11 +99,13 @@ game_loop:
     # 1a. Check if key has been pressed
     jal handle_input
     beq $v0, $zero, skip_keypress
-    jal refresh_screen 
+    jal refresh_screen
     
 	# 2 Update locations
     skip_keypress:
     jal apply_gravity
+    jal animate_web
+    jal animate_green_goblin
     
     la $t3, cycles
     lw $t0, 4($t3)
@@ -110,6 +136,10 @@ sleep:
 	lw $t0, 0($t3)
 	addiu $t0, $t0, 1
 	sw $t0, 0($t3)
+	
+	lw $t0, time
+	addiu $t0, $t0, 1
+	sw $t0, time
 	   
     # 5. Go back to Step 1
     j game_loop

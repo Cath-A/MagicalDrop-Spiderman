@@ -57,13 +57,21 @@ respond_to_D:
     j keyboard_done
 
 respond_to_S:
+    jal erase_web
     jal gwen_shoot
+    lw $t0, web_visible
+    beq $t0, $zero, keyboard_done
+    jal draw_web
     j keyboard_done
 
 respond_to_W:
+    jal erase_web
     jal gwen_throw
     addi $a0, $v0, 0
     jal trigger
+    lw $t0, web_visible
+    beq $t0, $zero, keyboard_done
+    jal draw_web
     j keyboard_done
 
 keyboard_done:

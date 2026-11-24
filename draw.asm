@@ -7,9 +7,12 @@
 # Palettes: one word per colour (0x00RRGGBB).
 # Index 0 is never read: in a sprite, index 0 means "transparent".
 ##############################################################################
-# gwen: pink, white, black, dark pink, blue
-gwen_palette:   
+# gwen: transparent, pink, white, black, dark pink, blue
+gwen_palette:
     .word 0x00000000, 0x00CD2966, 0x00FFFFFF, 0x00000000, 0x00991C47, 0x000A9693
+green_goblin_palette:
+# green goblin: 0: transparent, 1: outline (unused), 2: purple, 3: dark purple, 4: green, 5: yellow, 6: white, 7: light gray, 8: dark gray, 9: darkest (outline)
+    .word 0x00000000, 0x00000000, 0x00A64FD6, 0x006E2E9E, 0x006CC24A, 0x00FFD23F, 0x00FFFFFF, 0x00B8B2C8, 0x007D7692, 0x001A0F2E
 # bombs: transparent, outline, main, shade, shine
 bomb_orange:    .word 0x00000000, 0x007A3410, 0x00F28C28, 0x00C9641A, 0x00FFFFFF
 bomb_green:     .word 0x00000000, 0x001F4D2B, 0x006CC24A, 0x003E9142, 0x00FFFFFF
@@ -53,6 +56,40 @@ bomb_sprite:
     .byte 1,3,3,3,3,3,1
     .byte 0,1,3,3,3,1,0
     .byte 0,0,1,1,1,0,0
+    .align 2
+    
+green_goblin:
+    .word 35, 30
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,9,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,9,2,2,2,2,2,2,2,2,9,9,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,9,2,2,2,2,2,2,2,2,2,2,2,9,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,2,2,2,2,2,2,2,2,2,2,9,2,2,9,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,2,2,2,2,2,2,2,2,2,9,4,9,2,2,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,4,2,2,2,4,4,4,2,2,9,4,9,9,2,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,9,4,2,4,9,9,4,4,2,4,4,9,0,9,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,5,9,4,9,0,5,4,4,2,4,4,9,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,5,0,4,0,0,5,4,4,2,4,9,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,4,5,4,5,5,4,6,4,4,9,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,9,9,4,6,6,6,6,4,4,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,9,4,4,9,6,6,6,4,4,9,2,2,4,4,9,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,4,4,4,2,9,9,9,9,9,2,2,2,4,4,4,9,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,4,4,4,9,2,9,3,9,2,2,2,9,4,4,4,4,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,4,4,4,4,9,2,2,9,3,9,2,2,9,9,4,4,4,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,9,0,0,0,2,4,4,4,9,9,2,2,2,9,3,9,9,9,9,2,2,2,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,9,9,9,9,9,9,0,9,2,2,2,2,9,3,3,3,9,2,2,2,9,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,9,2,2,2,2,9,3,3,3,9,2,2,2,9,0,0,0,0,0,0,0,0
+    .byte 0,0,9,9,0,0,0,0,0,0,0,0,0,9,3,3,3,3,3,9,9,9,0,9,9,9,0,0,0,0,0,9,9,0,0
+    .byte 0,9,7,9,0,0,0,0,0,0,0,0,9,4,2,2,2,2,2,2,2,4,9,0,0,0,0,0,0,0,0,9,7,9,0
+    .byte 9,8,7,9,9,9,9,9,9,9,9,9,4,4,4,2,2,9,2,2,4,4,4,9,9,9,9,9,9,9,9,9,7,8,9
+    .byte 9,8,7,9,7,7,7,7,9,7,9,2,2,4,4,4,9,0,9,4,4,4,2,2,9,7,9,7,7,7,7,9,7,8,9
+    .byte 9,8,7,9,8,8,8,9,2,9,7,2,2,2,2,9,0,0,0,9,2,2,2,2,7,9,2,9,8,8,8,9,7,8,9
+    .byte 9,7,9,9,8,8,8,9,2,2,7,2,2,2,2,9,9,0,9,9,2,2,2,2,7,2,2,9,8,8,8,9,9,7,9
+    .byte 9,7,9,0,9,8,8,9,9,9,9,9,9,9,9,9,8,9,8,9,9,9,9,9,9,9,9,9,8,8,9,0,9,7,9
+    .byte 9,7,9,0,0,9,8,8,8,8,8,8,8,7,9,8,8,8,8,8,9,7,8,8,8,8,8,8,8,9,0,0,9,7,9
+    .byte 9,7,9,0,0,0,9,7,8,8,8,8,8,8,7,9,8,8,8,9,7,8,8,8,8,8,8,7,9,0,0,0,9,7,9
+    .byte 0,9,7,9,0,0,0,7,9,9,7,8,8,8,9,9,8,8,8,9,9,8,8,8,7,9,9,7,0,0,0,9,7,9,0
+    .byte 0,0,9,9,0,0,0,7,0,0,7,9,9,9,0,0,9,8,9,0,0,9,9,9,7,0,0,7,0,0,0,9,9,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,9,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0
     .align 2
 
 ##############################################################################
@@ -162,14 +199,133 @@ erase_gwen:
     pop($ra)
     jr $ra
 
-draw_web:
-    # looks at where gwen is
-    # draws a straight white line of pixels up to the middle of the bomb
-    # draws a flat line on the bottom of the bomb/top of screen
-erase_web:
-    # look at where gwen it
-    # draws a black line above her head
+# Draws Green Goblin sprite.
+draw_green_goblin:
+    push($ra)
+    lw $a0, goblin_offset
+    add $a0, $gp, $a0
+    la $a1, green_goblin
+    la $a2, green_goblin_palette
+    jal draw_sprite
+    
+    lw $a0, goblin_offset
+    add $a0, $gp, $a0
+    addi $a0, $a0, GOBLIN_BOMB_OFFSET
+    lw $a1, goblin_bomb_colour
+    jal draw_bomb
+    
+    pop($ra)
+    jr $ra
 
+# Erases Green Goblin sprite.
+erase_green_goblin:
+    push($ra)
+    lw $a0, goblin_prev_offset
+    add $a0, $gp, $a0
+    addi $a1, $zero, 30
+    addi $a2, $zero, 35
+    add $a3, $zero, $zero
+    jal rectangle
+    pop($ra)
+    jr $ra
+
+# Returns: v0 = starting address, v1 = height from gwen's head
+# Returns: v0 = starting address, v1 = height from gwen's head, a0 = cap address (0 = no bomb above her)
+web_measurements:
+    push($ra)
+    jal find_bomb
+    add $a0, $zero, $zero               
+    bltz $v0, web_empty_column
+    srl $t0, $v1, 9
+    addi $t0, $t0, 7                    # row just below the bomb
+    lw $t3, gwen_col                    # CHANGED: cap position comes from the column, not her offset
+    sll $t4, $t3, 3
+    sub $t4, $t4, $t3                   # col * 7
+    addi $t4, $t4, 10                   # + 8 (grid left edge) + 2 (first of the middle 3 pixels)
+    sll $t4, $t4, 2                     # pixels -> bytes
+    sll $t5, $t0, 9                     # row * 512
+    add $a0, $t5, $t4
+    add $a0, $a0, $gp                   # cap screen address
+    j web_measure
+web_empty_column:
+    addi $t0, $zero, 8
+web_measure:
+    lw $t1, gwen_offset
+    srl $t2, $t1, 9
+    sub $v1, $t2, $t0
+    andi $t1, $t1, 511
+    addi $t1, $t1, 20
+    sll $t0, $t0, 9
+    add $v0, $t0, $t1
+    add $v0, $v0, $gp
+    pop($ra)
+    jr $ra
+
+draw_web:
+    push($ra)
+    jal web_measurements
+    sw $v0, web_addr
+    sw $v1, web_height
+    sw $a0, web_cap_addr                # remember the cap for erasing
+    beq $a0, $zero, web_no_cap          # no bomb above her, so no cap
+    addi $a1, $zero, 1                  # 1 tall
+    addi $a2, $zero, 3                  # 3 wide
+    li $a3, 0x00FFFFFF
+    jal rectangle                       # only clobbers t0-t3 and keeps v0/v1
+web_no_cap:
+    blez $v1, draw_web_done
+
+    sll $t0, $v1, 9                     # start at the bottom of the web (just above her head)
+    addi $t0, $t0, -512                 # last row = start + (height - 1) * 512
+    add $t0, $v0, $t0
+    add $t1, $v1, $zero                 # rows left
+    add $t2, $zero, $zero               # phase within the dash + gap cycle
+    li $t3, 0x00FFFFFF
+    li $t4, WEB_DASH
+    addi $t5, $t4, WEB_GAP              # cycle length
+
+web_dash_loop:
+    bge $t2, $t4, web_dash_skip         # phase >= DASH means this row is a gap
+    sw $t3, 0($t0)
+web_dash_skip:
+    addi $t2, $t2, 1
+    bne $t2, $t5, web_dash_nowrap
+    add $t2, $zero, $zero               # wrap to the start of the next dash
+web_dash_nowrap:
+    addi $t0, $t0, -512                 # move up one row
+    addi $t1, $t1, -1
+    bgtz $t1, web_dash_loop
+
+draw_web_done:
+    pop($ra)
+    jr $ra
+
+erase_web:
+    push($ra)
+    lw $a1, web_height
+    beq $a1, $zero, erase_web_done
+    lw $a0, web_addr
+    addi $a2, $zero, 1
+    add $a3, $zero, $zero
+    jal rectangle
+    lw $a0, web_cap_addr
+    beq $a0, $zero, erase_no_cap
+    addi $a1, $zero, 1
+    addi $a2, $zero, 3
+    add $a3, $zero, $zero
+    jal rectangle
+erase_no_cap:
+    sw $zero, web_height
+    sw $zero, web_cap_addr
+    lw $t0, web_visible
+    push($t0)
+    sw $zero, web_visible
+    jal refresh_screen
+    pop($t0)
+    sw $t0, web_visible
+erase_web_done:
+    pop($ra)
+    jr $ra
 
 # Draws a bomb.
 # Params: a0 = its address, a1 = its colour
@@ -283,7 +439,12 @@ draw_dynamic:
     la $t0, gwen_hold
     lbu $a1, 0($t0)
     jal draw_bomb
+    
+    lw $t0, web_visible                 # CHANGED: web goes on top of everything else
+    beq $t0, $zero, draw_dynamic_done
+    jal draw_web
 
+draw_dynamic_done:
     pop($s0)
     pop($ra)
     jr $ra
